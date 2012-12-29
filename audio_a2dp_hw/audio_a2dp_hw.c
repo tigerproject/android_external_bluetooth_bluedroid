@@ -81,6 +81,12 @@ struct a2dp_stream_out;
 
 struct a2dp_audio_device {
     struct audio_hw_device device;
+#ifdef ICS_AUDIO_BLOB
+    audio_mode_t            mode;
+    bool                    bt_enabled;
+    bool                    suspended;
+    pthread_mutex_t         lock;
+#endif
     struct a2dp_stream_out *output;
 };
 
@@ -1037,6 +1043,13 @@ static int adev_close(hw_device_t *device)
     return 0;
 }
 
+#ifdef ICS_AUDIO_BLOB
+static uint32_t adev_get_supported_devices(const struct audio_hw_device *dev)
+{
+    return AUDIO_DEVICE_OUT_ALL_A2DP;
+}
+#endif
+
 static int adev_open(const hw_module_t* module, const char* name,
                      hw_device_t** device)
 {
@@ -1057,11 +1070,18 @@ static int adev_open(const hw_module_t* module, const char* name,
     if (!adev)
         return -ENOMEM;
 
+#ifdef ICS_AUDIO_BLOB
+    adev->bt_enabled = true;
+    adev->suspended = false;
+#endif
+
     adev->device.common.tag = HARDWARE_DEVICE_TAG;
     adev->device.common.version = AUDIO_DEVICE_API_VERSION_CURRENT;
     adev->device.common.module = (struct hw_module_t *) module;
     adev->device.common.close = adev_close;
-
+#ifdef ICS_AUDIO_BLOB
+    adev->device.get_supported_devices = adev_get_supported_devices;
+#endif
     adev->device.init_check = adev_init_check;
     adev->device.set_voice_volume = adev_set_voice_volume;
     adev->device.set_master_volume = adev_set_master_volume;
